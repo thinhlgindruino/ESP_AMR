@@ -48,7 +48,6 @@ IPC  ─────────────────────  ESP32  ─
 |---|---|
 | UART1 (↔ESP32), remap | PB6 (TX), PB7 (RX) |
 | NeoPixel Trái / Phải / Trước | PB12 / PB13 / PB14 |
-| Xi-nhan | PB4 |
 | Nút 1–6 | PA8, PA9, PA10, PA11, PB3, PA15 |
 | LED 1–6 (tương ứng nút) | PA4, PA5, PA6, PA7, PB0, PB1 |
 
@@ -117,18 +116,3 @@ idf.py -p <COMx> flash monitor
 - Board: `Generic STM32F1 series` → `BluePill F103C8`
 - Upload method: `STLink` (khuyến nghị) hoặc `Serial` (cần BOOT0=HIGH lúc nạp, về LOW + reset sau khi xong)
 - Thư viện cần cài: `Adafruit NeoPixel STM32` (bản fork cho STM32, không dùng bản gốc AVR)
-
-## 7. Lỗi đã gặp & cách sửa (tránh lặp lại)
-
-| Triệu chứng | Nguyên nhân | Cách sửa |
-|---|---|---|
-| W5500 version luôn đọc `0x00` | Thiếu `phy_config.phy_addr = 1` | Thêm dòng này trong `eth_init()` |
-| `implausible frame length 65533`, RX corruption | CS đặt vào GPIO26 (dính audio amp onboard) hoặc SCK đặt vào GPIO0 (dính boot-strap) | Dùng đúng bộ chân 23/19/18/5 (mượn bus SD không dùng) |
-| `esp-idf` báo "W5500 version mismatched" dù chip thật hoạt động tốt | Bug driver `esp_eth`, nhiều chip W5500 chính hãng trả version≠0x04 | Có thể bypass check trong `managed_components/espressif__w5500` nếu cần, nhưng ưu tiên sửa `phy_addr` trước |
-| Ping "Destination host unreachable" | Nhiều card mạng cùng dải IP trên PC (WiFi+LAN+VMware) gây rối route | Tắt bớt card mạng không dùng, chỉ giữ đúng 1 card |
-| Nối thẳng ESP32↔PC không lên Link, qua switch/hub thì lên | PHY giá rẻ (OEM) tương thích Auto-MDIX kém với 1 số card USB-LAN | Luôn qua switch/hub trung gian, không nối thẳng point-to-point |
-| STM32 mất lệnh UART ngẫu nhiên khi NeoPixel đang chạy hiệu ứng | `strip.show()` tắt ngắt toàn cục, UART ngắt thường mất byte | Chuyển UART RX sang DMA circular buffer |
-| Nạp STM32 báo "Unable to get core ID" | Lỡ cấu hình PA13/PA14 thành GPIO thường, tự khóa SWD | Nạp lại bằng "Connect Under Reset" trong STM32CubeProgrammer, rồi đổi chân tránh PA13/PA14 |
-| ESP32 liên tục reset khi cấp nguồn ngoài cho W5500 | Chân SPI bị driven vào chip chưa có nguồn (backfeed qua diode bảo vệ), hoặc nguồn chung quá tải khi thêm nhiều LED/NeoPixel | Cấp nguồn đồng thời cho mọi module dùng chung bus tín hiệu; tách nguồn riêng nếu cần |
-| `arduino-esp32` build lỗi `-Werror` ở các thư viện không dùng tới (LittleFS...) | `arduino-esp32` 3.3.11 chưa tương thích đầy đủ ESP-IDF v6.0.1 | Đã bỏ hướng `arduino-esp32`, quay về driver `esp_eth` gốc sau khi tìm ra `phy_addr` |
-| Linker báo "undefined reference" dù hàm đã khai báo trong `.h` | Thiếu định nghĩa thật trong file `.c`, hoặc biến dùng `extern` giữa 2 file nhưng bên kia khai `static` | Kiểm tra bằng `Select-String -Pattern <ten_ham>` trên cả `.c` lẫn `.h`; bỏ `static` nếu cần chia sẻ biến |
